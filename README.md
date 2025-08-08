@@ -249,6 +249,36 @@ Choose your VLM backend and run:
 # OpenAI example
 python agent.py --backend openai --model-name "gpt-4o"
 
+## Training with RecurrentPPO (experimental)
+
+A lightweight Gymnasium wrapper around the FastAPI server is provided at `rl/envs/emerald_http_env.py`. This avoids any modifications to memory reading, emulator core, or state extraction.
+
+Steps:
+
+1) Start the FastAPI server in another terminal:
+
+```
+python server/app.py --port 8000
+```
+
+2) Install RL dependencies (already added to `requirements.txt`):
+
+```
+pip install -r requirements.txt
+```
+
+3) Run training:
+
+```
+python rl/train_recurrent_ppo.py --server-url http://127.0.0.1:8000 --reset-state tests/states/simple_test.state --total-timesteps 50000
+```
+
+Notes:
+- Observations are downsampled 84x84 grayscale frames from the `/state` screenshot.
+- Actions are single-button presses from {NOOP, A, B, START, SELECT, UP, DOWN, LEFT, RIGHT} with configurable `--action-repeat`.
+- Rewards are shaped from deltas in safe, exposed fields (money, pokedex_seen, pokedex_caught, badge count, and small movement reward) returned by `/state`.
+- No changes were made to `pokemon_env/memory_reader.py` or emulator core; training interacts only via HTTP.
+
 # Local model example  
 python agent.py --backend local --model-name "Qwen/Qwen2-VL-2B-Instruct"
 
