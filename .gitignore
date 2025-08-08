@@ -139,6 +139,9 @@ celerybeat.pid
 .env
 .venv
 env/
+!env/
+!env/__init__.py
+!env/pokemon_env.py
 venv/
 ENV/
 env.bak/

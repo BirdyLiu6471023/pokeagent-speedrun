@@ -1,23 +1,85 @@
+from __future__ import annotations
+
+import os
 import random
 import logging
+import numpy as np
 from utils.vlm import VLM
-from utils.state_formatter import format_state_for_llm, format_state_summary, get_movement_options, get_party_health_summary
+from utils.state_formatter import (
+    format_state_for_llm,
+    format_state_summary,
+    get_movement_options,
+    get_party_health_summary,
+)
 from agent.system_prompt import system_prompt
+
+try:  # Optional RL policy
+    from rl.ppo_lstm_agent import PPOLSTMAgent
+except Exception:  # pragma: no cover - RL dependencies might be missing
+    PPOLSTMAgent = None
+
+# Environment variables control RL usage and model path
+RL_POLICY_PATH = os.environ.get("POKEAGENT_RL_POLICY", "ppo_lstm_policy.pt")
+USE_RL = os.environ.get("POKEAGENT_USE_RL", "0") == "1"
+_rl_agent: PPOLSTMAgent | None = None
+
+
+def _load_rl_agent() -> PPOLSTMAgent | None:
+    """Lazy-load the RL policy if available."""
+    global _rl_agent
+    if _rl_agent is not None:
+        return _rl_agent
+    if USE_RL and PPOLSTMAgent is not None and os.path.exists(RL_POLICY_PATH):
+        try:
+            _rl_agent = PPOLSTMAgent.load(RL_POLICY_PATH, device="cpu")
+            logger.info(f"Loaded RL policy from {RL_POLICY_PATH}")
+        except Exception as exc:  # pragma: no cover - load failures shouldn't break runtime
+            logger.warning(f"Failed to load RL policy: {exc}")
+            _rl_agent = None
+    return _rl_agent
 
 # Set up module logging
 logger = logging.getLogger(__name__)
 
-def action_step(memory_context, current_plan, latest_observation, frame, state_data, recent_actions, vlm):
+
+def action_step(memory_context, current_plan, latest_observation, frame, state_data, recent_actions, vlm, use_rl: bool = False):
+    """Decide and perform the next action button(s).
+
+    When ``use_rl`` or the ``POKEAGENT_USE_RL`` environment variable is
+    set, this function will attempt to use a trained PPO-LSTM policy. If
+    the policy cannot be loaded, the original VLM heuristic is used as a
+    fallback.
     """
-    Decide and perform the next action button(s) based on memory, plan, observation, and comprehensive state.
-    Returns a list of action buttons as strings.
-    """
+
+    rl_agent = _load_rl_agent() if (use_rl or USE_RL) else None
+    if rl_agent is not None:
+        logger.info("[ACTION] Using RL policy for action selection")
+        # Construct minimal observation for the RL agent
+        party_info = state_data.get("player", {}).get("party", [])
+        party_array = np.zeros((6, 3), dtype=np.int32)
+        for i, pkmn in enumerate(party_info[:6]):
+            party_array[i, 0] = pkmn.get("species", 0)
+            party_array[i, 1] = pkmn.get("current_hp", 0)
+            party_array[i, 2] = pkmn.get("max_hp", 0)
+        pos = state_data.get("player", {}).get("position", {})
+        position = np.array([pos.get("x", 0), pos.get("y", 0)], dtype=np.int32)
+        screen = frame if frame is not None else np.zeros((240, 160, 3), dtype=np.uint8)
+        obs = {"screen": screen, "party": party_array, "position": position}
+        action_idx, _, _, _ = rl_agent.act(obs, deterministic=True)
+        button = rl_agent.action_list[action_idx]
+        logger.info(f"[ACTION] RL agent chose: {button}")
+        return [button]
+
+    # ------------------------------------------------------------------
+    # Fallback to VLM heuristic
+    # ------------------------------------------------------------------
+
     # Get formatted state context and useful summaries
     state_context = format_state_for_llm(state_data)
     state_summary = format_state_summary(state_data)
     movement_options = get_movement_options(state_data)
     party_health = get_party_health_summary(state_data)
-    
+
     logger.info("[ACTION] Starting action decision")
     logger.info(f"[ACTION] State: {state_summary}")
     logger.info(f"[ACTION] Party health: {party_health['healthy_count']}/{party_health['total_count']} healthy")
@@ -142,6 +204,5 @@ def action_step(memory_context, current_plan, latest_observation, frame, state_d
             actions = ['A', 'A', 'A']  # Try to progress dialogue/menu
         else:
             actions = [random.choice(['A', 'RIGHT', 'UP', 'DOWN', 'LEFT'])]  # Random exploration
-    
     logger.info(f"[ACTION] Actions decided: {', '.join(actions)}")
-    return actions 
+    return actions
