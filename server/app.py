@@ -1871,6 +1871,7 @@ def main():
     parser.add_argument("--load-state", type=str, help="Load a saved state file on startup")
     parser.add_argument("--record", action="store_true", help="Record video of the gameplay")
     parser.add_argument("--no-ocr", action="store_true", help="Disable OCR dialogue detection")
+    parser.add_argument("--open-stream", action="store_true", help="Open the visualization UI in a browser after start")
     # Server always runs headless - display handled by client
     
     args = parser.parse_args()
@@ -2053,6 +2054,15 @@ def main():
     print("  /debug/test_milestone_operations - Test milestone save/load (POST)")
     print("  /stop - Stop server")
     
+    # Optionally open the stream UI automatically
+    if args.open_stream:
+        try:
+            import webbrowser
+            webbrowser.open(f"http://localhost:{args.port}/stream")
+            print("🌐 Opened stream UI in your default browser")
+        except Exception as e:
+            print(f"⚠️ Could not open browser automatically: {e}")
+
     try:
         # Run headless game loop in main thread
         game_loop(manual_mode=False)  # Server always runs in server mode

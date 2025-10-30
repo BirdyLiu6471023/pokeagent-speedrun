@@ -154,36 +154,11 @@ class OpenAIBackend(VLMBackend):
         try:
             response = self._call_completion(messages)
             result = response.choices[0].message.content
-            duration = time.time() - start_time
             
-            # Extract token usage if available
-            token_usage = {}
-            if hasattr(response, 'usage'):
-                token_usage = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                }
-            
-            # Log the interaction
-            log_llm_interaction(
-                interaction_type=f"openai_{module_name}",
-                prompt=text,
-                response=result,
-                duration=duration,
-                metadata={"model": self.model_name, "backend": "openai", "has_image": False, "token_usage": token_usage},
-                model_info={"model": self.model_name, "backend": "openai"}
-            )
             
             return result
         except Exception as e:
-            duration = time.time() - start_time
-            log_llm_error(
-                interaction_type=f"openai_{module_name}",
-                prompt=text,
-                error=str(e),
-                metadata={"model": self.model_name, "backend": "openai", "duration": duration, "has_image": False}
-            )
+
             logger.error(f"OpenAI API error: {e}")
             raise
 

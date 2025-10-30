@@ -198,6 +198,11 @@ def run_multiprocess_client(server_port=8000, args=None):
                                             )
                                             if response.status_code == 200:
                                                 print(f"🎮 Agent: {action} (sent successfully)")
+                                                # Inform server to increment agent_step counter for /stream
+                                                try:
+                                                    requests.post(f"{server_url}/agent_step", timeout=1)
+                                                except requests.exceptions.RequestException:
+                                                    pass
                                             else:
                                                 print(f"🎮 Agent: {action} (server error: {response.status_code})")
                                         except requests.exceptions.RequestException as e:
@@ -362,6 +367,11 @@ def run_multiprocess_client(server_port=8000, args=None):
                                                     step_count += 1
                                                     print(f"🎮 Agent: {action} (sent successfully)")
                                                     print(f"🎮 Step {step_count}: {result['action']}")
+                                                    # Inform server to increment agent_step counter for /stream
+                                                    try:
+                                                        requests.post(f"{server_url}/agent_step", timeout=1)
+                                                    except requests.exceptions.RequestException:
+                                                        pass
                                                     last_agent_time = current_time
                                                     
                                                     # Auto-save checkpoint after each step for persistence

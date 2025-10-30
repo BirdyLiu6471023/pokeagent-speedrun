@@ -106,6 +106,10 @@ def main():
                        help="Model name to use")
     parser.add_argument("--simple", action="store_true", 
                        help="Simple mode: direct frame->action without 4-module architecture")
+    parser.add_argument("--use-agentic-framework", action="store_true", 
+                       help="Use agentic framework callable for action selection")
+    parser.add_argument("--agentic-framework", type=str, default=None, 
+                       help="Agentic framework name (default: openai gpt-4o)")
     
     # Operation modes
     parser.add_argument("--headless", action="store_true", 

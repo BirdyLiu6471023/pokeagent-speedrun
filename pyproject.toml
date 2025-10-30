@@ -40,6 +40,16 @@ dependencies = [
     "sentencepiece>=0.1.99",
     "cffi>=1.6",
     "pytesseract>=0.3.10",
+    # RL stack
+    "gymnasium>=0.29.1",
+    "stable-baselines3>=2.3.2",
+    "sb3-contrib>=2.3.0",
+    "tensorboard>=2.14.0",
+    "tqdm>=4.66.0",
+    "rich>=13.0.0",
+    "langchain>=0.2.16",
+    "langchain-openai>=0.2.0",
+    "langgraph>=0.2.17",
 ]
 
 [project.optional-dependencies]

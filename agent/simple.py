@@ -582,21 +582,21 @@ class SimpleAgent:
             prompt = f"""You are playing Pokemon Emerald. Progress quickly to the milestones by balancing exploration and exploitation of things you know. 
             Based on the current game frame and state information, think through your next move and choose the best button action.
 
-RECENT ACTION HISTORY (last {self.actions_display_count} actions):
-{recent_actions_str}
+            RECENT ACTION HISTORY (last {self.actions_display_count} actions):
+            {recent_actions_str}
 
-LOCATION/CONTEXT HISTORY (last {self.history_display_count} steps):
-{history_summary}
+            LOCATION/CONTEXT HISTORY (last {self.history_display_count} steps):
+            {history_summary}
 
-CURRENT OBJECTIVES:
-{objectives_summary}
+            CURRENT OBJECTIVES:
+            {objectives_summary}
 
-CURRENT GAME STATE:
-{formatted_state}
+            CURRENT GAME STATE:
+            {formatted_state}
 
-{movement_memory}
+            {movement_memory}
 
-{stuck_warning}
+            {stuck_warning}
 
 Available actions: A, B, START, SELECT, UP, DOWN, LEFT, RIGHT
 
@@ -733,6 +733,7 @@ Context: {context} | Coords: {coords} """
             # Update server with agent step and metrics (for agent thinking display)
             self._update_server_metrics()
             
+            print(f'actions from simple.process_step: {actions}')
             return actions
             
         except Exception as e:

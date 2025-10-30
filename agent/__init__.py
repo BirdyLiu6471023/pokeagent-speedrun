@@ -3,6 +3,7 @@ Agent modules for Pokemon Emerald speedrunning agent
 """
 
 from utils.vlm import VLM
+from .agentic_framework import get_agentic_framework
 from .action import action_step
 from .memory import memory_step
 from .perception import perception_step
@@ -32,6 +33,16 @@ class Agent:
         self.vlm = VLM(backend=backend, model_name=model_name)
         print(f"   VLM: {backend}/{model_name}")
         
+        # Optional agentic framework (enabled via CLI flag)
+        self.agent_framework = None
+        try:
+            if args and getattr(args, 'use_agentic_framework', False):
+                framework_name = getattr(args, 'agentic_framework', None)
+                self.agent_framework = get_agentic_framework(framework_name)
+                print(f"   Agentic framework enabled ({framework_name or 'openai gpt-4o'})")
+        except Exception as _e:
+            print(f"⚠️ Could not initialize agentic framework: {_e}")
+
         # Initialize agent mode
         self.simple_mode = simple_mode
         if simple_mode:
@@ -62,6 +73,15 @@ class Agent:
         Returns:
             dict: Contains 'action' and optionally 'reasoning'
         """
+        # If agentic framework is enabled, use it directly
+        if self.agent_framework:
+            try:
+                action, reason = self.agent_framework(game_state)
+                return {"action": action, "reasoning": reason}
+            except Exception as e:
+                print(f"❌ Agentic framework error: {e}")
+                # fallback to other modes
+
         if self.simple_mode:
             # Simple mode - delegate to SimpleAgent
             return self.simple_agent.step(game_state)
