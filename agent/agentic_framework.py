@@ -12,7 +12,6 @@ from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.runnables import RunnableLambda
 from langchain_core.tools import tool
 from pydantic import BaseModel
-from langchain.output_parsers import PydanticOutputParser
 
 ## import libraries related to graph 
 from langgraph.prebuilt import ToolNode
@@ -20,10 +19,13 @@ from langgraph.graph import StateGraph, START, END
 
 # Import LLM logger
 from utils.llm_logger import log_llm_interaction, log_llm_error
-
+from utils.state_formatter import format_state_for_llm
 # # import project functions
 # from utils.state_formatter import format_state_for_llm, format_state_summary, get_movement_options, get_party_health_summary
 # from agent.system_prompt import system_prompt
+
+from .agentic_utils import get_game_context 
+from .agentic_system_prompts import overworld_system_prompt, planning_system_prompt, unknow_system_prompt
 
 # Set up module logging
 import logging
@@ -121,12 +123,15 @@ def _to_data_url(image_like):
     return f"data:image/png;base64,{b64}"
 
 
-def agent_node(agent_state, tools_available, vlm, OutputTemplate, name):
-    # Build multimodal messages (text + optional image)
-    system_msg = SystemMessage(content=(
-        "You are a player who is playing Pokemon Emerald"
-        f" You have tools including {tools_available}. "
-    ))
+def agent_node(agent_state, tools_available, vlm, OutputTemplate, name, system_prompt=None):
+    # Choose system prompt based on mode if not explicitly provided
+    mode = agent_state.get("mode", "overworld")
+    if not system_prompt:
+        if mode == "overworld":
+            system_prompt = overworld_system_prompt
+        else:
+            system_prompt = unknow_system_prompt
+    system_msg = SystemMessage(content=(system_prompt))
 
     # Accept pre-encoded data URL or raw image in agent_state
     image_url = agent_state.get("image_url")
@@ -134,19 +139,30 @@ def agent_node(agent_state, tools_available, vlm, OutputTemplate, name):
     if not image_url and image_obj is not None:
         image_url = _to_data_url(image_obj)
 
-    human_input = [{"type": "text", "text": agent_state['text_msg']}]  # required text
-    if image_url:
-        human_input.append({"type": "image_url", "image_url": {"url": image_url}})
+    # Build textual context for the model
+    last_5_actions = agent_state.get("last_5_actions", "")
+    last_5_reasoning_summary = agent_state.get("last_5_reasoning_summary", "")
+    formatted_state = agent_state.get("formatted_game_state", "")
+    text_msg = (
+        f"Mode: {mode}\n"
+        f"Last 5 actions: {last_5_actions}\n"
+        f"Recent reasoning: {last_5_reasoning_summary}\n\n"
+        f"State:\n{formatted_state}"
+    )
+    text_input = [{"type": "text", "text": text_msg}]
 
-    human_msg = HumanMessage(content=human_input)
+    if image_url:
+        text_input.append({"type": "image_url", "image_url": {"url": image_url}})
+
+    text_input_msg = HumanMessage(content=text_input)
 
     # First, run a normal tool-callable message to preserve tool routing info
     raw_agent = vlm.bind_tools(tools_available)
-    raw_result = raw_agent.invoke([system_msg, human_msg])
+    raw_result = raw_agent.invoke([system_msg, text_input_msg])
 
     # Then, use LangChain's pipe style with structured output
     def _msgs(_):
-        return [system_msg, human_msg]
+        return [system_msg, text_input_msg]
 
     chain = RunnableLambda(_msgs) | vlm.bind_tools(tools_available).with_structured_output(OutputTemplate)
     parsed = chain.invoke({})
@@ -162,10 +178,14 @@ def agent_node(agent_state, tools_available, vlm, OutputTemplate, name):
 class ActionState(TypedDict):
     messages:Annotated[List[BaseMessage], operator.add]
     sender:str
-    text_msg: str
     image: Union[Image.Image, np.ndarray]
     actions: Annotated[List[BaseMessage], operator.add]
     reasons: Annotated[List[BaseMessage], operator.add]
+    last_5_actions: str
+    last_5_reasoning_summary: str 
+    mode: str 
+    formatted_game_state: str
+    
 
 
 # def action_chain(human_input, frame=None):
@@ -225,6 +245,10 @@ class OpenAIAgenticFramework:
             "Please look at the game frame and choose the best next button action."
         )
 
+        # Keep short rolling histories so we can provide recent context to the chain
+        self._action_history: list[str] = []
+        self._reason_history: list[str] = []
+
         # Tools
         self.calculation_tools = [multiplyer, add]
 
@@ -233,7 +257,7 @@ class OpenAIAgenticFramework:
 
         # Output schema
         class StructuredOutput(BaseModel):
-            action: Literal['A', 'B', 'SELECT', 'UP', 'DOWN', 'RIGHT', 'LEFT']
+            action: Literal['A', 'B', 'SELECT', 'UP', 'DOWN', 'RIGHT', 'LEFT', 'L', 'R']
             reason: str
         self.OutputTemplate = StructuredOutput
 
@@ -263,12 +287,39 @@ class OpenAIAgenticFramework:
 
     def __call__(self, game_state: dict) -> tuple[str, str]:
         frame = extract_frame_from_game_state(game_state)
-        enter_chain = {"text_msg": self.default_prompt, "image": frame}
+        context_mode = get_game_context(game_state)
+        formatted_state = format_state_for_llm(game_state)
+        # Prepare recent history summaries
+        last5_actions = ", ".join(self._action_history[-5:]) if self._action_history else ""
+        # Keep reasons concise for prompt context
+        if self._reason_history:
+            last5_reasons_list = self._reason_history[-5:]
+            # Trim each reason to avoid overly long prompts
+            trimmed = [r if len(r) <= 200 else (r[:197] + "...") for r in last5_reasons_list]
+            last5_reasons = " | ".join(trimmed)
+        else:
+            last5_reasons = ""
+
+        enter_chain = {
+            "mode": context_mode,
+            "image": frame,
+            "formatted_game_state": formatted_state,
+            "last_5_actions": last5_actions,
+            "last_5_reasoning_summary": last5_reasons,
+        }
         start_time = time.time()
         res = self._chain.invoke(enter_chain)
+        print(res) 
         duration = time.time() - start_time
         action_decide = res['actions'][-1]
         reason_for_action = res['reasons'][-1]
+        # Update histories (cap to a reasonable size)
+        self._action_history.append(action_decide)
+        self._reason_history.append(reason_for_action)
+        if len(self._action_history) > 100:
+            self._action_history = self._action_history[-100:]
+        if len(self._reason_history) > 100:
+            self._reason_history = self._reason_history[-100:]
         try:
             # Log to LLM logger so /stream can display reasoning per step
             log_llm_interaction(
@@ -282,6 +333,10 @@ class OpenAIAgenticFramework:
         except Exception:
             pass
         return action_decide, reason_for_action
+
+    # # Convenience alias for code that expects a .step(...) method
+    # def step(self, game_state: dict) -> tuple[str, str]:
+    #     return self.__call__(game_state)
 
 
 def get_agentic_framework(name: Optional[str] = None):
@@ -299,8 +354,8 @@ def get_agentic_framework(name: Optional[str] = None):
 
 
 
-if __name__ == "__main__":
-    from PIL import Image
-    img = Image.open("emerald.png")  # or a numpy array frame
-    result = action_chain("Please look at the game part of the picture, what action should the play to do?", frame=img)
-    print(result)
+# if __name__ == "__main__":
+#     from PIL import Image
+#     img = Image.open("emerald.png")  # or a numpy array frame
+#     result = action_chain("Please look at the game part of the picture, what action should the play to do?", frame=img)
+#     print(result)
