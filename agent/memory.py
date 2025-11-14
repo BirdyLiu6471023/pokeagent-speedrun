@@ -139,14 +139,14 @@ def memory_step(memory_context, current_plan, recent_actions, observation_buffer
     # Combine into comprehensive memory context
     memory_context = f"""★★★ COMPREHENSIVE MEMORY CONTEXT ★★★
 
-CURRENT STATE: {current_state_summary}
+                    CURRENT STATE: {current_state_summary}
 
-CURRENT PLAN: {current_plan if current_plan else 'No plan yet'}
+                    CURRENT PLAN: {current_plan if current_plan else 'No plan yet'}
 
-KEY EVENTS: {' -> '.join(key_events[-5:]) if key_events else 'None recently'}
+                    KEY EVENTS: {' -> '.join(key_events[-5:]) if key_events else 'None recently'}
 
-RECENT MEMORY (last 50 entries):
-{chr(10).join(memory_entries[-30:])}"""  # Show last 30 entries to avoid too much text
+                    RECENT MEMORY (last 50 entries):
+                    {chr(10).join(memory_entries[-30:])}"""  # Show last 30 entries to avoid too much text
     
     logger.info(f"[MEMORY] Memory context updated with {len(memory_entries)} total entries")
     logger.info(f"[MEMORY] Current state: {current_state_summary}")

@@ -300,6 +300,7 @@ class SimpleAgent:
         """Extract map ID from game state"""
         try:
             return game_state.get("map", {}).get("id")
+            print('map_id is', game_state.get("map", {}).get("id"))
         except Exception as e:
             logger.warning(f"Error getting map ID: {e}")
         return None
