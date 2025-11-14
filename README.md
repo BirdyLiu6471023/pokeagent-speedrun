@@ -1,5 +1,24 @@
 # PokéAgent Challenge: RPG Speedrunning Agent in Pokémon Emerald
 
+
+## Submission/Proposal
+
+[Siqi Liu]
+
+### Overall Framework:
+This work formalizes Pokémon Emerald gameplay as a partially observable sequential decision process and implements an agentic loop orchestrated with LangGraph/LangChain. The loop alternates Perception → Planning → Action → Memory/Reflection modules, each implemented as a node with typed inputs/outputs and verifiable JSON schemas. The following diagram shows the high-level skeleton we instantiate and evaluate.
+
+![Agentic Framework](planner_graph.png)
+
+
+#### Methods Hightlight: 
+1. Hierachical Structure: Before action nodes, the framework would evaluate if a planing step is necessary (come into a new location/map, stuck in a place for a whole). And action nodes are divided into 3 divisions: 1) overworld; 2) battle and 3) other, which is beneficial to provide best or more concrete information to the agent to finish the specific actions. Besides, the planner node uses the GPT-5 while the action nodes use the GPT-4, which provide a future method using LLM for planner, while SLM for specific task/action node. 
+
+2. Tools Calling: Tool calling is under development, but the skeleton was built in the framework. 
+
+
+## Competition 
+
 ![PokéAgent Challenge: RPG Speedrunning Agent in Pokémon Emerald](emerald.png)
 
 An AI agent that plays Pokémon Emerald using vision-language models to perceive the game environment, plan actions, and execute gameplay strategies. This is a **starter kit** designed to be easily customizable for different VLMs and agent behaviors.
@@ -8,6 +27,8 @@ An AI agent that plays Pokémon Emerald using vision-language models to perceive
 
 - [Overview](#overview)
 - [Features](#features)
+- [Methods: Agentic Agent Framework](#methods-agentic-agent-framework)
+- [Research Directions](#research-directions)
 - [Directory Structure](#directory-structure)
 - [Requirements](#requirements)
 - [Installation](#installation)
