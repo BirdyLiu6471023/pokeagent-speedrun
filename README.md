@@ -6,13 +6,13 @@
 [Siqi Liu]
 
 ### Overall Framework:
-This work formalizes Pokémon Emerald gameplay as a partially observable sequential decision process and implements an agentic loop orchestrated with LangGraph/LangChain. The loop alternates Perception → Planning → Action → Memory/Reflection modules, each implemented as a node with typed inputs/outputs and verifiable JSON schemas. The following diagram shows the high-level skeleton we instantiate and evaluate.
+This work formalizes Pokémon Emerald gameplay as a partially observable sequential decision process and implements an agentic loop orchestrated with LangGraph/LangChain. The loop try to alternate Perception → Planning → Action → Memory/Reflection modules, each implemented as a node within the whole framework with typed inputs/outputs and verifiable JSON schemas. The following diagram shows the high-level skeleton we instantiate and evaluate.
 
 ![Agentic Framework](planner_graph.png)
 
 
-#### Methods Hightlight: 
-1. Hierachical Structure: Before action nodes, the framework would evaluate if a planing step is necessary (come into a new location/map, stuck in a place for a whole). And action nodes are divided into 3 divisions: 1) overworld; 2) battle and 3) other, which is beneficial to provide best or more concrete information to the agent to finish the specific actions. Besides, the planner node uses the GPT-5 while the action nodes use the GPT-4, which provide a future method using LLM for planner, while SLM for specific task/action node. 
+### Methods Hightlight: 
+1. Hierarchical structure: Before invoking action nodes, the framework checks whether a planning step is needed (e.g., when entering a new location/map, when the agent has been stuck for several steps). Action nodes are organized into three categories—(1) overworld, (2) battle, and (3) other—to provide task‑specific context and specific information that improves execution quality and reduce the hallucination. The planner uses a larger LLM (e.g., GPT‑5) for high‑level reasoning, while the action nodes use a smaller, faster model (e.g., GPT‑4/SLM) for low‑level control — suggesting a promising design pattern of LLM‑for‑planning and SLM‑for‑execution.
 
 2. Tools Calling: Tool calling is under development, but the skeleton was built in the framework. 
 
