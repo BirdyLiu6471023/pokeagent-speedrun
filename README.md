@@ -16,6 +16,17 @@ This work formalizes Pokémon Emerald gameplay as a partially observable sequent
 
 2. Tools Calling: Action nodes can call tools (via LangGraph/LangChain tool-calls) to improve reliability and reduce hallucination. The overworld and dialogue nodes expose a set of task‑oriented tools implemented in `agent/agentic_tools.py`.
 
+## Added Files:
+```
+├── agent/                          # original folder 
+│   ├── __init__.py
+│   ├── agentic_framework.py        # Main framework of the agentic AI system
+│   ├── agentic_planner_node.py     # planner node
+│   ├── agentic_action_nodes.py     # action nodes
+│   ├── agentic_tools.py            # tools can be used by LLM 
+│   ├── agentic_utilities.py        # help functions used to get game state
+│   └── agentic_system_prompt.py    # system prompt for different nodes
+```
 
 ## Competition 
 
