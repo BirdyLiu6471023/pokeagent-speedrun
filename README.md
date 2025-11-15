@@ -14,7 +14,7 @@ This work formalizes Pokémon Emerald gameplay as a partially observable sequent
 ### Methods Hightlight: 
 1. Hierarchical structure: Before invoking action nodes, the framework checks whether a planning step is needed (e.g., when entering a new location/map, when the agent has been stuck for several steps). Action nodes are organized into three categories—(1) overworld, (2) battle, and (3) other—to provide task‑specific context and specific information that improves execution quality and reduce the hallucination. The planner uses a larger LLM (e.g., GPT‑5) for high‑level reasoning, while the action nodes use a smaller, faster model (e.g., GPT‑4/SLM) for low‑level control — suggesting a promising design pattern of LLM‑for‑planning and SLM‑for‑execution.
 
-2. Tools Calling: Tool calling is under development, but the skeleton was built in the framework. 
+2. Tools Calling: Action nodes can call tools (via LangGraph/LangChain tool-calls) to improve reliability and reduce hallucination. The overworld and dialogue nodes expose a set of task‑oriented tools implemented in `agent/agentic_tools.py`.
 
 
 ## Competition 
